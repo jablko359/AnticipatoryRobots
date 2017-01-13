@@ -5,5 +5,6 @@ classdef obstacle
         s   %severity
         r   %effort of removal
         L   %length
+        a = 0  %isActive
     end
 end

@@ -7,4 +7,4 @@ corridorLength = 5000;
 obstacles = 12;
 leak = 10;
 
-[robots,leaks, obstacles] = init(robotData,simTime,corridorLength,obstacles,leak);
+sim(robotData,simTime,corridorLength,obstacles,leak,1);
