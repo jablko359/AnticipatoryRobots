@@ -6,18 +6,14 @@ classdef leak
         tau %time of activity
         theta %time when leak becomes an obstacle
         rho %damages thah leak causes to passing robots       
-        exists = 1 %set to 0 when changed to obstacle
     end
     
     methods
-        function obst = createObstacle(obj,corridorLength)
+        function obst = createObstacle(obj,obstacles,corridorLength)
             obst = obstacle;
             obst.a = 1;
             obst.x = obj.x;
-            obst.r = 1;
-            obst.t = 0;
-            obst.L = obj.i * corridorLength/100;
-            obst.s = 0.9 * obj.i + 0.1;            
+            obst.L = obj.i 
         end
     end
 end

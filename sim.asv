@@ -7,7 +7,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
     %main loop
     for i=1:step:iterationsCount
         time = time + step;        
-        obstacles = activateObstacles(obstacles,time);                 
+        [obstacles,leaks] = activateObstacles(obstacles,time,corridorLength);                 
     end
     
  
@@ -16,22 +16,39 @@ end
 
 
 
-function obstacles = activateObstacles(inputObstacles,time)
+function [obstacles,leaks] = activateObstacles(inputObstacles,time,inputLeaks,corridorLength)
     activeCount = 1;   
     activeIndexes = [];
     for i=1:size(inputObstacles,2)      
-        obstacle = inputObstacles(i);
-        isActive = obstacle.a;        
-        activate = obstacle.t <= time;
+        obstacleInstance = inputObstacles(i);
+        isActive = obstacleInstance.a;        
+        activate = obstacleInstance.t <= time;
         if (~isActive && activate)
-            obstacle.a = 1;
+            obstacleInstance.a = 1;
             activeIndexes(activeCount) = i;
             activeCount = activeCount +1;
         end
-        obstacles(i) = obstacle;
-    end    
-    %How to change leak into obstacle?
+        obstacles(i) = obstacleInstance;
+    end
+    
+    for i=1:size(inputLeaks,2) 
+        leak = inputLeaks(i);        
+        activate = (leak.t + leak.tau) <= time;
+        if activate
+            obstaclesCount = size(obstacles,2);
+            leakObstacle = createObstacle(leak,corridorLength);
+            index = getOverlapingObstacle(leakObstacle,obstacles);
+            if index == -1
+                obstacles(obstaclesCount + 1) = leakObstacle;
+            else
+                influencedObstacle = obstacles(index);                
+                influencedObstacle.s = influencedObstacle.s + leak.i;
+            end
+        end
+    end   
 end
+
+
 
 function plotObstacles(activeObstacles,corridorLength)
     obstaclePosition = 1;    
@@ -59,8 +76,12 @@ function x = getPositionInCorridor(in,corridorLength)
     end
 end
 
-function robotTask = setRobotTask(robot,obstacles)
-    
+function robotTask = simulateRobotTask(robot,obstacles)
+    %1. Wyznacz zadanie dla robota ?
+    %2. Jeœli ma gdzieœ jechaæ, oblicz odleg³oœæ, oraz kierunek
+    %3. Na podstawie odleg³oœci, ustaw przyœpieszenie robota od 0 do amax
+    %4. Oblicz prêdkoœæ robota
+    %5. Oblicz po³o¿enie robota
 end
 
 function v = calculateRobotVelocity(robot,step)
@@ -77,4 +98,23 @@ end
 function x = calculateRobotPosition(robot,corridorLength,step)
     pos = robot.x + step * robot.v;
     x = getPositionInCorridor(pos,corridorLength);
+end
+
+function index = getOverlapingObstacle(obstacleInstance,obstacleList)
+    index = -1;
+    length = obstacle.L;
+    pos = obstacle.x;
+    for i=1:size(obstacleList,2)
+        obstacleInstance = obstacleList(i);
+        start = pos - length;
+        endd = pos + length;
+        obstacleStart = obstacleInstance.x - obstacleInstance.L;
+        obstacleEnd = obstacleInstance.x + obstacleInstance.L;
+        leftContains = (obstacleStart > start) && (obstacleStart < endd);
+        rightContains = (obstacleEnd > start) && (obstacleEnd < endd);
+        if leftContains || rightContains
+            index = i;
+            return;
+        end
+    end
 end

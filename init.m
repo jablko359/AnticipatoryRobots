@@ -57,7 +57,7 @@ function obstacles = generateObstacles(simTime,obstaclesCount,corridorLength)
     for i = 1:obstaclesCount
         instaceObstacle = obstacle;
         x = rand * corridorLength;
-        length = (rand * corridorLength)/obstaclesCount; %Obstacles should be too long 
+        length = (rand * corridorLength)/100; %Obstacles should be too long 
         if i ~= 1 
             while obstacleOverlaps(x,length,obstacles);
                 x = rand * corridorLength;

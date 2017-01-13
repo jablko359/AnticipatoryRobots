@@ -5,33 +5,62 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
     time = 0;
     activeObstacles = zeros([size(obstacles,2),1]);
     %main loop
-    for i=1:step:iterationsCount
+    for i=1:iterationsCount
         time = time + step;        
-        obstacles = activateObstacles(obstacles,time);                 
+        [obstacles,leaks] = activateObstacles(obstacles,time,leaks,corridorLength);      
+        i
     end
-    
+    obstacles
+    leaks
  
-    plotObstacles(obstacles,corridorLength)
+    plotObstacles(obstacles,corridorLength);
 end
 
 
 
-function obstacles = activateObstacles(inputObstacles,time)
+function [obstacles,leaks] = activateObstacles(inputObstacles,time,inputLeaks,corridorLength)
     activeCount = 1;   
     activeIndexes = [];
     for i=1:size(inputObstacles,2)      
-        obstacle = inputObstacles(i);
-        isActive = obstacle.a;        
-        activate = obstacle.t <= time;
+        obstacleInstance = inputObstacles(i);
+        isActive = obstacleInstance.a;        
+        activate = obstacleInstance.t <= time;
         if (~isActive && activate)
-            obstacle.a = 1;
+            obstacleInstance.a = 1;
             activeIndexes(activeCount) = i;
             activeCount = activeCount +1;
         end
-        obstacles(i) = obstacle;
-    end    
-    %How to change leak into obstacle?
+        obstacles(i) = obstacleInstance;
+    end
+    
+    for i=1:size(inputLeaks,2) 
+        leak = inputLeaks(i);        
+        activate = (leak.t + leak.tau) <= time;
+        if activate && leak.exists;
+            leak.exists = 0;
+            obstaclesCount = size(obstacles,2);
+            leakObstacle = createObstacle(leak,corridorLength);
+            index = getOverlapingObstacle(leakObstacle,obstacles);
+            if index == -1
+                obstacles(obstaclesCount + 1) = leakObstacle;
+            else
+                influencedObstacle = obstacles(index);                
+                severity = influencedObstacle.s + leak.i;
+                if severity < 1
+                    influencedObstacle.s = severity;
+                else
+                    influencedObstacle.s = 1;
+                end
+                %Powinno siê przed³u¿yæ istniej¹c¹ przeszkodê, a w
+                %przypadku gdy wyd³u¿enie jest niemo¿liwe z pwoodu
+                %pokrywania siê przeszkód, trzeba po³¹czyæ 2 przeszkody
+            end
+        end
+        leaks(i) = leak;
+    end   
 end
+
+
 
 function plotObstacles(activeObstacles,corridorLength)
     obstaclePosition = 1;    
@@ -81,4 +110,23 @@ end
 function x = calculateRobotPosition(robot,corridorLength,step)
     pos = robot.x + step * robot.v;
     x = getPositionInCorridor(pos,corridorLength);
+end
+
+function index = getOverlapingObstacle(obstacleInstance,obstacleList)
+    index = -1;
+    length = obstacleInstance.L;
+    pos = obstacleInstance.x;
+    for i=1:size(obstacleList,2)
+        obstacleInstance = obstacleList(i);
+        start = pos - length;
+        endd = pos + length;
+        obstacleStart = obstacleInstance.x - obstacleInstance.L;
+        obstacleEnd = obstacleInstance.x + obstacleInstance.L;
+        leftContains = (obstacleStart > start) && (obstacleStart < endd);
+        rightContains = (obstacleEnd > start) && (obstacleEnd < endd);
+        if leftContains || rightContains
+            index = i;
+            return;
+        end
+    end
 end
