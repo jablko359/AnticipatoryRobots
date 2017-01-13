@@ -43,10 +43,10 @@ function plotObstacles(activeObstacles,corridorLength)
         X(i,2) = getPositionInCorridor(obstacle.x + obstacle.L,corridorLength);
         Y(i,1) = obstaclePosition;
         Y(i,2) = obstaclePosition;        
-    end
-    plot(X,Y);
-    plot(x',Y');
-    grid;
+    end    
+    plot(X',Y');
+    axis([0,corridorLength,0,2]);
+    
 end
 
 function x = getPositionInCorridor(in,corridorLength)
@@ -57,4 +57,24 @@ function x = getPositionInCorridor(in,corridorLength)
     else
         x = in - corridorLength;
     end
+end
+
+function robotTask = setRobotTask(robot,obstacles)
+    
+end
+
+function v = calculateRobotVelocity(robot,step)
+    velocity = robot.d * (robot.v + robot.a * step);
+    if velocity < -robot.vmax
+        v = -vmax;
+    elseif velocity > robot.vmax
+        v = vmax;
+    else
+        v = velocity;
+    end
+end
+
+function x = calculateRobotPosition(robot,corridorLength,step)
+    pos = robot.x + step * robot.v;
+    x = getPositionInCorridor(pos,corridorLength);
 end

@@ -58,3 +58,27 @@ function x = getPositionInCorridor(in,corridorLength)
         x = in - corridorLength;
     end
 end
+
+function robotTask = simulateRobotTask(robot,obstacles)
+    %1. Wyznacz zadanie dla robota ?
+    %2. Jeœli ma gdzieœ jechaæ, oblicz odleg³oœæ, oraz kierunek
+    %3. Na podstawie odleg³oœci, ustaw przyœpieszenie robota od 0 do amax
+    %4. Oblicz prêdkoœæ robota
+    %5. Oblicz po³o¿enie robota
+end
+
+function v = calculateRobotVelocity(robot,step)
+    velocity = robot.d * (robot.v + robot.a * step);
+    if velocity < -robot.vmax
+        v = -vmax;
+    elseif velocity > robot.vmax
+        v = vmax;
+    else
+        v = velocity;
+    end
+end
+
+function x = calculateRobotPosition(robot,corridorLength,step)
+    pos = robot.x + step * robot.v;
+    x = getPositionInCorridor(pos,corridorLength);
+end
