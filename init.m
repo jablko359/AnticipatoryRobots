@@ -1,10 +1,10 @@
 function [robots, leaks, obstacles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount)
-    robots = initRobots(robotData.n,robotData.r,robotData.space,robotData.vmax,corridorLength);
+    robots = initRobots(robotData.n,robotData.r,robotData.space,robotData.vmax,robotData.amax,corridorLength);
     leaks = generateLeaks(simTime,leaksCount,corridorLength);
     obstacles = generateObstacles(simTime,obstaclesCount,corridorLength);
 end
 
-function robots = initRobots(n,r,space,vmax,corridorLength)
+function robots = initRobots(n,r,space,vmax,amax,corridorLength)
     for i = 1:n
         rob = robot;
         rob.n = i;
@@ -14,8 +14,10 @@ function robots = initRobots(n,r,space,vmax,corridorLength)
         else
             pos = corridorLength - ((i - r -1) * space);
             rob.x = pos;
+            rob.d = -1;
         end       
         rob.vmax = vmax;
+        rob.amax = amax;
         robots(i) = rob;
     end
 end

@@ -2,13 +2,12 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
     [robots, leaks, obstacles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount);    
     
     iterationsCount = simTime / step;     
-    time = 0;
-    activeObstacles = zeros([size(obstacles,2),1]);
+    time = 0;    
     %main loop
     for i=1:iterationsCount
         time = time + step;        
         [obstacles,leaks] = activateObstacles(obstacles,time,leaks,corridorLength);      
-        i
+        robots = simulateRobots(robots,obstacles,leaks,step,corridorLength);
     end
     obstacles
     leaks
@@ -88,7 +87,32 @@ function x = getPositionInCorridor(in,corridorLength)
     end
 end
 
-function robotTask = simulateRobotTask(robot,obstacles)
+function robots = simulateRobots(inputRobots,obstacles,leaks,step,corridorLength)
+    robots = robot.empty;
+    for i=1:size(inputRobots,2)
+        robots(i) = simulateRobotTask(inputRobots(i),obstacles,step,leaks,corridorLength);
+    end
+end
+
+function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength)
+    currentTask = robot.task;
+    switch currentTask
+        case 'explore'
+        %robot jedzie, szukaj¹c przecieków
+            if robot.a < robot.amax
+                robot.a = robot.amax;                
+            end
+        [velocity,isDownturned] = calculateRobotVelocity(robot,step,obstacles);
+        robot.v = velocity;
+        robot.isDownturned = isDownturned;
+        robot.x = calculateRobotPosition(robot,corridorLength,step);     
+        foundLeaks = searchForLeaks(robot,leaks,corridorLength);        
+        case 'move'        
+        %robot jedzie w konkretne miejsce
+        case 'fix'
+        %robot stoi i usuwa wyciek lub przeszkode.
+    end
+    robotTask = robot;
     %1. Wyznacz zadanie dla robota ?
     %2. Jeœli ma gdzieœ jechaæ, oblicz odleg³oœæ, oraz kierunek
     %3. Na podstawie odleg³oœci, ustaw przyœpieszenie robota od 0 do amax
@@ -96,15 +120,26 @@ function robotTask = simulateRobotTask(robot,obstacles)
     %5. Oblicz po³o¿enie robota
 end
 
-function v = calculateRobotVelocity(robot,step)
+function [v,isDownturned] = calculateRobotVelocity(robot,step,obstacles)
+
     velocity = robot.d * (robot.v + robot.a * step);
     if velocity < -robot.vmax
-        v = -vmax;
+        v = -robot.vmax;
     elseif velocity > robot.vmax
-        v = vmax;
+        v = robot.vmax;
     else
         v = velocity;
     end
+    
+    %spowolnienie robota przez przeszkody
+    isDownturned = 0;
+    obstacleIndex = getObstacleByX(robot.x,obstacles);
+    if obstacleIndex ~= -1
+        isDownturned = 1;
+        downturn = rand * 0.1;
+        v = v * (1 - downturn);    
+    end
+    %Robota moga spowolnic uszkodzenia i przeszkody
 end
 
 function x = calculateRobotPosition(robot,corridorLength,step)
@@ -127,6 +162,42 @@ function index = getOverlapingObstacle(obstacleInstance,obstacleList)
         if leftContains || rightContains
             index = i;
             return;
+        end
+    end
+end
+
+function index = getObstacleByX(x,obstacles)
+    index = -1;
+    for i=1:size(obstacles,2)
+       obstacleInstance = obstacles(i);
+       obstacleStart = obstacleInstance.x - obstacleInstance.L;
+       obstacleEnd = obstacleInstance.x + obstacleInstance.L;
+       if x > obstacleStart && x < obstacleEnd
+           index = i;
+           return;
+       end
+    end
+end
+
+function foundLeaks = searchForLeaks(robot,leaks,corridorLength)
+    foundLeaks = []; 
+    for i=1:size(leaks,2)        
+        leakInstance = leaks(i);
+        if ~leakInstance.exists
+            continue
+        end
+        distance = abs(leakInstance.x - robot.x);
+        relativeDistance = distance/corridorLength;
+        %Powinno najbardziej zale¿eæ od odleg³oœci a nie po równo
+        distanceProb = -0.7*relativeDistance + 0.7;
+        intesityProb = leakInstance.i * 0.1;
+        velocityProb = -0.1*(robot.v/robot.vmax) + 0.1;
+        damageProb = -0.1*robot.dm + 0.1;
+        prob = distanceProb + intesityProb + velocityProb + damageProb;
+        isDetected = rand <= prob;
+        if isDetected
+            foundSize = size(foundLeaks,2);
+            foundLeaks(foundSize + 1) = i;
         end
     end
 end
