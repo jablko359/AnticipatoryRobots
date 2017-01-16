@@ -91,6 +91,7 @@ function robots = simulateRobots(inputRobots,obstacles,leaks,step,corridorLength
     robots = robot.empty;
     for i=1:size(inputRobots,2)
         robots(i) = simulateRobotTask(inputRobots(i),obstacles,step,leaks,corridorLength);
+        
     end
 end
 
@@ -98,19 +99,37 @@ function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength
     currentTask = robot.task;
     switch currentTask
         case 'explore'
-        %robot jedzie, szukaj¹c przecieków
+            %robot jedzie, szukaj¹c przecieków
             if robot.a < robot.amax
-                robot.a = robot.amax;                
+                robot.a = robot.amax;
             end
-        [velocity,isDownturned] = calculateRobotVelocity(robot,step,obstacles);
-        robot.v = velocity;
-        robot.isDownturned = isDownturned;
-        robot.x = calculateRobotPosition(robot,corridorLength,step);     
-        foundLeaks = searchForLeaks(robot,leaks,corridorLength);        
-        case 'move'        
-        %robot jedzie w konkretne miejsce
+            [velocity,isDownturned] = calculateRobotVelocity(robot,step,obstacles);
+            robot.v = velocity;
+            robot.isDownturned = isDownturned;
+            robot.x = calculateRobotPosition(robot,corridorLength,step);
+            foundLeaks = searchForLeaks(robot,leaks,corridorLength);
+            %Znajdz najblizszy wyciek i jedz go naprawic powiadamiaj¹c resztê
+            foundLeaksCount = size(foundLeaks,2);
+            if foundLeaksCount > 0
+                distance = inf;
+                target = -1;
+                for i=1:foundLeaksCount
+                    robotPosition = robot.x;
+                    leakPosition = leaks(foundLeaks(i));
+                    tmpDist = calculateDistance(leakPosition.x,robotPosition,corridorLength);  % abs(leakPosition - robotPosition);
+                    if tmpDist < distance
+                        distance = tmpDist;
+                        target = leakPosition;
+                        robot.destination = target;
+                        robot.task = 'move';
+                    end
+                end
+            end
+        case 'move'
+            %robot jedzie w konkretne miejsce
+            
         case 'fix'
-        %robot stoi i usuwa wyciek lub przeszkode.
+            %robot stoi i usuwa wyciek lub przeszkode.
     end
     robotTask = robot;
     %1. Wyznacz zadanie dla robota ?
@@ -186,7 +205,7 @@ function foundLeaks = searchForLeaks(robot,leaks,corridorLength)
         if ~leakInstance.exists
             continue
         end
-        distance = abs(leakInstance.x - robot.x);
+        distance = calculateDistance(leakInstance.x,robot.x,corridorLength); % abs(leakInstance.x - robot.x);
         relativeDistance = distance/corridorLength;
         %Powinno najbardziej zale¿eæ od odleg³oœci a nie po równo
         distanceProb = -0.7*relativeDistance + 0.7;
@@ -200,4 +219,33 @@ function foundLeaks = searchForLeaks(robot,leaks,corridorLength)
             foundLeaks(foundSize + 1) = i;
         end
     end
+end
+
+function distance = calculateDistance(x1,x2,corridorLength)
+    d1 = abs(x1-x2);
+    smaller = min([x1 x2]);
+    bigger = max([x1 x2]);
+    d2 = abs(corridorLength + smaller - bigger);
+    distance = min([d1 d2]);
+end
+
+function d = getDirection(robotX,x2,corridorLength)
+    d1 = abs(robotX-x2);
+    smaller = min([robotX x2]);
+    bigger = max([robotX x2]);
+    d2 = abs(corridorLength + smaller - bigger);
+    if robotX > x2 
+        if d1 < d2
+            d = -1;
+        else
+            d = 1;
+        end
+    else
+        if d1 < d2
+            d = 1;
+        else
+            d = -1;
+        end
+    end
+    
 end
