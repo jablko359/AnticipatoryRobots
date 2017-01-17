@@ -10,6 +10,6 @@ classdef robot
         dm=0  %damage(0-100)?             
         task='explore' %current robot task (explore,move,fix)        
         isDownturned = 0 %whether robot is downturned by obstacle       
-        destination = -1
+        destination = -1        
     end     
 end

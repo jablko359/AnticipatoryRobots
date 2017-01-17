@@ -7,6 +7,8 @@ classdef leak
         theta %time when leak becomes an obstacle
         rho %damages thah leak causes to passing robots       
         exists = 1 %set to 0 when changed to obstacle
+        repaired = 0
+        n %robots needed to repair
     end
     
     methods
