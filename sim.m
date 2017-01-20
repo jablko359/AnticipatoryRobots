@@ -1,5 +1,8 @@
 function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
-    [robots, leaks, obstacles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount);    
+    [robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount,10);    
+    
+  %  T = timer('TimerFcn', {@drawCallback, robots}, 'Period', 1);
+  %  start(T);
     
     iterationsCount = simTime / step;     
     time = 0;    
@@ -7,15 +10,21 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
     for i=1:iterationsCount
         time = time + step;        
         [obstacles,leaks] = activateObstacles(obstacles,time,leaks,corridorLength);      
-        robots = simulateRobots(robots,obstacles,leaks,step,corridorLength);
+        robots = simulateRobots(robots,obstacles,leaks,step,corridorLength,holes);
+%         pause(0.1);
+%         hold on;
+%         plotObstacles(obstacles,corridorLength);
+%         plotRobots(robots);
+%         plotLeaks(leaks);
+%         hold off;
     end
     obstacles
     leaks
     
-    hold on;
-    plotObstacles(obstacles,corridorLength);
-    plotRobots(robots);
-    plotLeaks(leaks);
+%     hold on;
+%     plotObstacles(obstacles,corridorLength);
+%     plotRobots(robots);
+%     plotLeaks(leaks);
 end
 
 
@@ -116,16 +125,21 @@ function x = getPositionInCorridor(in,corridorLength)
     end
 end
 
-function robots = simulateRobots(inputRobots,obstacles,leaks,step,corridorLength)
+function robots = simulateRobots(inputRobots,obstacles,leaks,step,corridorLength,holes)
     robots = robot.empty;
     for i=1:size(inputRobots,2)
-        robots(i) = simulateRobotTask(inputRobots(i),obstacles,step,leaks,corridorLength,robots);
-        
+        newRobots = simulateRobotTask(inputRobots(i),obstacles,step,leaks,corridorLength,inputRobots,holes);
+        for j=1:size(newRobots,2)
+            robotInstance = newRobots(j);
+            prevIndex = robotInstance.n;
+            robots(prevIndex) = robotInstance;
+        end
     end
 end
 
-function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength,robots)
+function robotTasks = simulateRobotTask(robot,obstacles,step,leaks,corridorLength,robots,holes)
     currentTask = robot.task;
+    robotTasks = robot.empty;
     switch currentTask
         case 'explore'
             %robot jedzie, szukaj¹c przecieków
@@ -151,7 +165,8 @@ function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength
                         target = leakPosition.x;
                         anyAssigned = checkAssignedAny(robots,target);
                         if ~anyAssigned
-                            robot.destination = target;                        
+                            robot.destination = target;     
+                            robot.leak = foundLeaks(i);
                             robot.task = 'move';
                         end                                             
                     end
@@ -181,10 +196,34 @@ function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength
                 end
             end            
         case 'fix' 
-            
+            leakIndex = robot.leak;
+            fixingLeak = leaks(leakIndex);
+            fixingLeak.n = 3;
+            fixingLeak.k = fixingLeak.k + 1;
+            % a co z tymi które jad¹ do zagro¿enia, bo te¿ je wykry³y?
+            if fixingLeak.n > fixingLeak.k
+                robotsInRange = getRobotsInRange(robot,robots,holes,corridorLength);
+                for j=1:size(robotsInRange,2)
+                    robotInstance = robots(robotsInRange(j));
+                    robotInstance.task = 'move';
+                    robotInstance.destination = fixingLeak.x;
+                    robotInstance.leak = leakIndex;
+                    robotIndex = size(robotTasks,2) + 1;
+                    robotTasks(robotIndex) = robotInstance;
+                end
+            else
+                leakInstance = leaks(leakIndex);
+                if leakInstance.repairStatus >= 1
+                    
+                else
+                end
+                
+                
+            end
             %robot stoi i usuwa wyciek lub przeszkode.
     end
-    robotTask = robot;
+    robotIndex = size(robotTasks,2) + 1;
+    robotTasks(robotIndex) = robot;
     %1. Wyznacz zadanie dla robota ?
     %2. Jeœli ma gdzieœ jechaæ, oblicz odleg³oœæ, oraz kierunek
     %3. Na podstawie odleg³oœci, ustaw przyœpieszenie robota od 0 do amax
@@ -192,6 +231,61 @@ function robotTask = simulateRobotTask(robot,obstacles,step,leaks,corridorLength
     %5. Oblicz po³o¿enie robota
 end
 
+function count = countMovingTowards(robots, index)
+    count = 0;
+    for i = 1:size(robots,2)
+        robotInstance = robots(i);
+        if strcmp(robotInstance.task,'move')&& robotInstance.task == index
+            count = count + 1;
+        end
+    end
+end
+
+function robotIndexes = getRobotsInRange(robot,robots,holes,corridorLength)
+    robotIndexes =[];
+    for i=1:size(robots,2)
+        participant = robots(i);
+        canCommunicate = checkRobotCommunication(robot.x, participant.x, holes, corridorLength);
+        if canCommunicate
+            indexSize = size(robotIndexes,2);
+            robotIndexes(indexSize + 1) = i;
+        end
+    end
+end
+
+function canCommunicate = checkRobotCommunication(x,y,holes,corridorLength)
+    distance = calculateDistance(x,y,corridorLength);
+    maxDistance = 200;
+    canCommunicate = 1;
+    if distance > maxDistance 
+        canCommunicate = 0;
+        return;
+    end
+    for i=1:size(holes,2)
+        hole = holes(i);
+        start = hole.x - hole.L;
+        start = calculatePosition(start,corridorLength);
+        stop = hole.x + hole.L;
+        stop = calculatePosition(stop,corridorLength);
+        if (x > start && x < stop) || (y > start && y < stop)
+            canCommunicate = 0;
+        end
+    end
+    if distance > maxDistance
+        canCommunicate = 0;
+    end
+end
+
+
+function pos = calculatePosition(x,corridorLength)
+    if x > corridorLength
+        pos = x - corridorLength;
+    elseif x < 0
+        pos = corridorLength - x;
+    else
+        pos = x;
+    end
+end
 function [v,isDownturned] = calculateRobotVelocity(robot,step,obstacles)
 
     velocity = robot.d * (robot.v + robot.a * step);
@@ -208,6 +302,7 @@ function [v,isDownturned] = calculateRobotVelocity(robot,step,obstacles)
     obstacleIndex = getObstacleByX(robot.x,obstacles);
     if obstacleIndex ~= -1
         isDownturned = 1;
+        %powinoo zale¿eæ od s
         downturn = rand * 0.1;
         v = v * (1 - downturn);    
     end

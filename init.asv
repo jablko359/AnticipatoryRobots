@@ -1,8 +1,7 @@
-function [robots, leaks, obstacles, comHoles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount,holesCount)
+function [robots, leaks, obstacles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount)
     robots = initRobots(robotData.n,robotData.r,robotData.space,robotData.vmax,robotData.amax,corridorLength);
     leaks = generateLeaks(simTime,leaksCount,corridorLength);
     obstacles = generateObstacles(simTime,obstaclesCount,corridorLength);
-    comHoles = generateCommunicationHoles(holesCount,corridorLength);
 end
 
 function robots = initRobots(n,r,space,vmax,amax,corridorLength)
@@ -66,7 +65,7 @@ function obstacles = generateObstacles(simTime,obstaclesCount,corridorLength)
         if i ~= 1 
             while obstacleOverlaps(x,length,obstacles);
                 x = rand * corridorLength;
-                length = (rand * corridorLength)/100; %Obstacles should be too long 
+                length = (rand * corridorLength)/obstaclesCount; %Obstacles should be too long 
             end
         end
         
@@ -80,21 +79,11 @@ function obstacles = generateObstacles(simTime,obstaclesCount,corridorLength)
 end
 
 function comHoles = generateCommunicationHoles(count,corridorLength)
-     
-     for i = 1:count
+     comHoles = CommunicationHole.empty(count);
+     for i = 1:obstaclesCount
         x = rand * corridorLength;
         length = (rand * corridorLength)/100;
-        if i ~= 1 
-            while obstacleOverlaps(x,length,comHoles);
-                x = rand * corridorLength;
-                length = (rand * corridorLength)/100; %Obstacles should be too long 
-            end
-        end
-        hole = CommunicationHole;
-        hole.x = x;
-        hole.L = length;
-        hole.r = rand;
-        comHoles(i) = hole;
+        
      end
 end
 
