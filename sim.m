@@ -81,7 +81,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
         end
         plot(X',Y');
         axis([0,corridorLength,0,2]);
-        
+        title(time + 's');
     end
 
     function plotRobots()
@@ -97,16 +97,24 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
 
     function plotLeaks()
         %Y = zeros(size(leaks,2),1);
+        repairedX = [];
+        activeX = [];
         for k=1:size(leaks,2)
             lk = leaks(k);
             if lk.repaired
                 repairedX(k) = lk.x;
+                repairedY(k) = 1;
             else
                 activeX(k) = lk.x;
                 Y(k) = 1;
             end            
         end
-        scatter(activeX,Y,'d');
+        if size(activeX) > 0
+            scatter(activeX,Y,'d','fill');
+        end
+         if size(repairedX) > 0
+            scatter(repairedX,repairedY,'d');
+        end
         %dopisaæ rysowanie zagro¿eñ naprawionych
     end
 
@@ -186,8 +194,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                 end
             case 'fix'
                 leakIndex = robot.leak;
-                fixingLeak = leaks(leakIndex);
-                fixingLeak.n = 3;
+                fixingLeak = leaks(leakIndex);                
                 fixingLeak.k = fixingLeak.k + 1;
                 % a co z tymi które jad¹ do zagro¿enia, bo te¿ je wykry³y?
                 if fixingLeak.n > fixingLeak.k
@@ -200,7 +207,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                         robots(robotInstance.n) = robotInstance;
                     end
                 else                                        
-                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.05 * (1 - fixingLeak.i);        
+                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.001 * (1 - fixingLeak.i) * step;        
                     
                 end
                 if fixingLeak.repairStatus >= 1
@@ -266,7 +273,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
             stop = hole.x + hole.L;
             stop = calculatePosition(stop);
             if (x > start && x < stop) || (y > start && y < stop)
-                canCommunicate = 0;
+                maxDistance =  (1 - hole.r) * maxDistance;
             end
         end
         if distance > maxDistance
@@ -349,11 +356,11 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
         foundLeaks = [];
         for k=1:size(leaks,2)
             leakInstance = leaks(k);
-            if ~leakInstance.exists && ~leakInstance.repaired
+            if ~leakInstance.exists || leakInstance.repaired
                 continue
             end
             distance = calculateDistance(leakInstance.x,robot.x); % abs(leakInstance.x - robot.x);
-            relativeDistance = distance/corridorLength;
+            relativeDistance = (distance/corridorLength)^4;
             %Powinno najbardziej zale¿eæ od odleg³oœci a nie po równo
             distanceProb = -0.7*relativeDistance + 0.7;
             intesityProb = leakInstance.i * 0.1;

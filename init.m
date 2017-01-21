@@ -41,7 +41,7 @@ function leaks = generateLeaks(simTime,leaksCount,corridorLength)
         instanceLeak.tau = rand * simTime;
         instanceLeak.theta = rand * simTime;
         instanceLeak.rho = rand;        
-        instanceLeak.n = round(rand * 2 + 1);
+        instanceLeak.n = round(rand * 2 + 1) + 3;
         
         leaks(i) = instanceLeak;
     end    
@@ -51,7 +51,7 @@ function res = hasLeak(x,leaks,offset)
     res = 0;
     for i = 1: size(leaks)
         instace = leaks(i);
-        if (x - instace.x) < offset
+        if abs(x - instace.x) < offset
             res = 1;
             return;
         end
