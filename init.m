@@ -1,7 +1,8 @@
-function [robots, leaks, obstacles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount)
+function [robots, leaks, obstacles, comHoles] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount,holesCount)
     robots = initRobots(robotData.n,robotData.r,robotData.space,robotData.vmax,robotData.amax,corridorLength);
     leaks = generateLeaks(simTime,leaksCount,corridorLength);
     obstacles = generateObstacles(simTime,obstaclesCount,corridorLength);
+    comHoles = generateCommunicationHoles(holesCount,corridorLength);
 end
 
 function robots = initRobots(n,r,space,vmax,amax,corridorLength)
@@ -39,7 +40,9 @@ function leaks = generateLeaks(simTime,leaksCount,corridorLength)
         instanceLeak.i = rand;
         instanceLeak.tau = rand * simTime;
         instanceLeak.theta = rand * simTime;
-        instanceLeak.rho = rand;
+        instanceLeak.rho = rand;        
+        instanceLeak.n = round(rand * 2 + 1) + 3;
+        
         leaks(i) = instanceLeak;
     end    
 end
@@ -48,7 +51,7 @@ function res = hasLeak(x,leaks,offset)
     res = 0;
     for i = 1: size(leaks)
         instace = leaks(i);
-        if (x - instace.x) < offset
+        if abs(x - instace.x) < offset
             res = 1;
             return;
         end
@@ -63,7 +66,7 @@ function obstacles = generateObstacles(simTime,obstaclesCount,corridorLength)
         if i ~= 1 
             while obstacleOverlaps(x,length,obstacles);
                 x = rand * corridorLength;
-                length = (rand * corridorLength)/obstaclesCount; %Obstacles should be too long 
+                length = (rand * corridorLength)/100; %Obstacles should be too long 
             end
         end
         
@@ -74,6 +77,25 @@ function obstacles = generateObstacles(simTime,obstaclesCount,corridorLength)
         instaceObstacle.x = x;
         obstacles(i) = instaceObstacle;        
     end
+end
+
+function comHoles = generateCommunicationHoles(count,corridorLength)
+     
+     for i = 1:count
+        x = rand * corridorLength;
+        length = (rand * corridorLength)/100;
+        if i ~= 1 
+            while obstacleOverlaps(x,length,comHoles);
+                x = rand * corridorLength;
+                length = (rand * corridorLength)/100; %Obstacles should be too long 
+            end
+        end
+        hole = CommunicationHole;
+        hole.x = x;
+        hole.L = length;
+        hole.r = rand;
+        comHoles(i) = hole;
+     end
 end
 
 function overlaps = obstacleOverlaps(pos,length,obstacleList)

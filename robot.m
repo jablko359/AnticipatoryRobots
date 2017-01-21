@@ -9,6 +9,8 @@ classdef robot
         amax %current amax reduced by damage level
         dm=0  %damage(0-100)?             
         task='explore' %current robot task (explore,move,fix)        
-        isDownturned = 0 %whether robot is downturned by obstacle
+        isDownturned = 0 %whether robot is downturned by obstacle       
+        destination = -1   
+        leak= -1; %index of targeted leak
     end     
 end
