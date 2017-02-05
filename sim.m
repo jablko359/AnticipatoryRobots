@@ -1,28 +1,27 @@
-function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
-    [robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount,10);
-
-    %  T = timer('TimerFcn', {@drawCallback, robots}, 'Period', 1);
-    %  start(T);
-
+function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, config, guiHandles)
+    %[robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount, 10);
+    robots = config('robots');
+    leaks = config('leaks');
+    obstacles = config('obstacles');
+    holes = config('holes');
+    
     iterationsCount = simTime / step;
     time = 0;
+    
     %main loop
     for j=1:iterationsCount
         time = time + step;
         activateObstacles();
         simulateRobots();
-        pause(0.05);
-        clf
-        hold on;
-        plotObstacles();
-        plotRobots();
-        plotLeaks();
-        hold off;
+        if mod(iterationsCount, 10) == 0 
+            h = guidata(guiHandles);  %Get the newest GUI 
+            updateVisualisation(h)
+            if (h.stopCondition == true)
+                 break;
+            end
+        end
     end    
     
-    
-    
-      
     function activateObstacles()
         activeCount = 1;
         activeIndexes = [];
@@ -66,10 +65,54 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
         end
     end
 
+    function updateVisualisation(h)
+        pause(0.001);
+        
+        figure(h.figure1);
+        axes(h.axes1);
+        cla; % Clear current axis
+        hold on;
+        title(time + 's');
+        plotObstacles();
+        plotRobots();
+        %plotLeaks();
+        hold off;
+        
+        figure(h.figure1);
+        axes(h.axes2);
+        cla; % Clear current axis
+        title(time + 's');
+        hold on;
+        plotLeaks();
+        hold off;
+    end
 
+    function plotLineAsCircle(X, maxLen, dispFormat)
+        %convert to round:
+        radius=1;      %Radius of the circle
+        %Define circle in polar coordinates (angle and radius)
+        X = X./maxLen;
+        numPoints=max(size(X));
+        theta_current=ones(1, numPoints)*(2*pi).*X';
+        rho_current=ones(1, numPoints)*radius;
+        
+        %Plot base:
+        theta_all=linspace(0, 2*pi, 100);
+        rho_all=ones(1, 100)*radius;
+        [X,Y] = pol2cart(theta_all, rho_all); %Convert polar coordinates to Cartesian
+        plot(X,Y,'g--','linewidth',.1);
+        %Plot elements:
+        %hold on
+        [X, Y] = pol2cart(theta_current, rho_current); 
+        scatter(X, Y, dispFormat, 'LineWidth', 2);
+        axis off
+        axis square
+        axis([-1,1,-1,1]);        
+        %hold off
+    end
 
     function plotObstacles()
-        obstaclePosition = 1;
+        obstaclePosition = 0.9;
         X = zeros(size(obstacles,2),2);
         Y = zeros(size(obstacles,2),2);
         for k=1:size(obstacles,2)
@@ -79,23 +122,26 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
             Y(k,1) = obstaclePosition;
             Y(k,2) = obstaclePosition;
         end
-        plot(X',Y');
-        axis([0,corridorLength,0,2]);
-        title(time + 's');
+        %plot(X',Y');       
+        plotLineAsCircle(X(:,1), corridorLength,'gx');
+        plotLineAsCircle(X(:,2), corridorLength,'gx');
+        %axis([0,corridorLength,0,2]);
     end
 
     function plotRobots()
+        RobotPosition = 1.5;
         X = zeros(size(robots,2),1);
         Y = zeros(size(robots,2),1);
         for k=1:size(robots,2)
             rob = robots(k);
             X(k) = rob.x;
-            Y(k) = 1;
+            Y(k) = RobotPosition;
         end
-        scatter(X,Y);
+        plotLineAsCircle(X, corridorLength, 'ro');
     end
 
     function plotLeaks()
+        LeakPosition = 1;
         %Y = zeros(size(leaks,2),1);
         repairedX = [];
         activeX = [];
@@ -103,17 +149,19 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
             lk = leaks(k);
             if lk.repaired
                 repairedX(k) = lk.x;
-                repairedY(k) = 1;
+                repairedY(k) = LeakPosition;
             else
                 activeX(k) = lk.x;
-                Y(k) = 1;
+                Y(k) = LeakPosition;
             end            
         end
         if size(activeX) > 0
-            scatter(activeX,Y,'d','fill');
+            plotLineAsCircle(activeX', corridorLength, 'rd');
+            %scatter(activeX,Y,'d','fill');
         end
-         if size(repairedX) > 0
-            scatter(repairedX,repairedY,'d');
+        if size(repairedX) > 0
+            plotLineAsCircle(repairedX', corridorLength, 'bd');
+            %scatter(repairedX,repairedY,'d');
         end
         %dopisaæ rysowanie zagro¿eñ naprawionych
     end

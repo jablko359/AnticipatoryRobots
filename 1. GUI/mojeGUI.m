@@ -33,7 +33,7 @@ function varargout = mojeGUI(varargin)
 %
 % See also: solver, inline2sym, generator_v2
 
-% Last Modified by GUIDE v2.5 19-Jun-2014 18:55:26
+% Last Modified by GUIDE v2.5 05-Feb-2017 02:54:26
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,26 @@ else
 end
 % End initialization code - DO NOT EDIT
 
+function handles = refreshGUI_basedOnConfig(hObject, dict)
+handles = guidata(hObject);  %Get the newest GUI 
+disp('refreshGUI_basedOnConfig');
+for  k = dict.keys()
+    %set(handles.controlName, 'String', handles.config('controlName'));
+    if isfield(handles, k{1})
+        command = ['set(handles.', k{1} ,', ''String'', dict(''', k{1}, '''));'];
+        eval(command);
+        handles.config(k{1}) = dict(k{1});
+    end
+end
+
+function handles = getAndUpdateNumberData(hObject, handles, fieldName)
+data = str2double(get(hObject, 'String'));
+if isnan(data)
+    data = handles.config(fieldName);
+    errordlg('Input must be a number','Error');
+end
+handles.config(fieldName) = data;
+handles = refreshGUI_basedOnConfig(hObject, handles.config);
 
 % --- Executes just before mojeGUI is made visible.
 function mojeGUI_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -66,34 +86,34 @@ function mojeGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for mojeGUI
 handles.output = hObject;
 
-handles.out.ogr1 = '-x1';
-handles.out.ogr2 =  '-x2';
-handles.out.ogr3 = 'x1^2 + x2^2 - 1';
-handles.out.wzor = '(x1-2)^2+x2^2';
-% handles.out.typ = 1;
+%initialise structure of saved values:
+handles.config = containers.Map;
+handles.config('e_name') = 'Domyslna';
+handles.config('e_n') = 8;
+handles.config('e_r') = 5;
+handles.config('e_space') = 10;
+handles.config('e_vmax') = 1;
+handles.config('e_amax') = 1;
+handles.config('e_simtime') = 8;
 
-handles.out.x1_from = -2;
-handles.out.x1_to = 2;
-handles.out.x2_from = -2;
-handles.out.x2_to = 2;
 
-set(handles.x1_from, 'String', handles.out.x1_from);
-set(handles.x1_to, 'String', handles.out.x1_to);
-set(handles.x2_from, 'String', handles.out.x2_from);
-set(handles.x2_to, 'String', handles.out.x2_to);
+handles.config('e_corridorLength') = 5000;
+handles.config('e_obstacles') = 12;
+handles.config('e_leaks') = 20;
 
-set(handles.wzor, 'String', handles.out.wzor);
-set(handles.ograniczenie1, 'String', handles.out.ogr1);
-set(handles.ograniczenie2, 'String', handles.out.ogr2);
-set(handles.ograniczenie3, 'String', handles.out.ogr3);
-% set(handles.popupmenu2, 'Value', handles.out.typ);
+handles.config('e_step') = 40;
+handles.stopCondition = false;
+
+handles.axes1.Visible = 'off';
+handles.axes2.Visible = 'off';
 
 % Update handles structure
+guidata(hObject, handles);
+handles = refreshGUI_basedOnConfig(hObject, handles.config);
 guidata(hObject, handles);
 
 % UIWAIT makes mojeGUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-
 
 % --- Outputs from this function are returned to the command line.
 function varargout = mojeGUI_OutputFcn(hObject, eventdata, handles) 
@@ -105,492 +125,213 @@ function varargout = mojeGUI_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
-
-% --- Executes on button press in pushbutton1.
-function pushbutton1_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton1 (see GCBO)
+% --- Executes on button press in pb_UruchomSymulacje.
+function pb_UruchomSymulacje_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_UruchomSymulacje (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Reset stop condition, hide axes
+handles.stopCondition = false;
+handles.axes1.Visible = 'on';
+axes(handles.axes1);
+axis off;
+handles.axes2.Visible = 'on';
+axes(handles.axes2);
+axis off;
+guidata(hObject, handles);
 
 % Get Parameter for computation
-s_func = handles.out.wzor;
-% typ = handles.out.typ;
-s_ogr = {handles.out.ogr1, handles.out.ogr2, handles.out.ogr3};
-% generator(funkcja,ogr);
-generator_v2(s_func,s_ogr,2);
-%Do computation - solver
-x0=[1;1; 1;1;1; 1;1;1;];
-options=optimset('Display','iter');
-% options=optimset('Display','final');
-% x=fsolve(@kktsystem2,x0,options);
+parameters = handles.config;
 
-rehash
+%Uruchom symulacje:
+robotData.n = parameters('e_n');
+robotData.r = parameters('e_r');
+robotData.space = parameters('e_space');
+robotData.vmax = parameters('e_vmax');
+robotData.amax = parameters('e_amax');
 
-x=fsolve(@kktsystem_gen, x0, options)
-
-% format bank
-% x1=x(1);
-% x2=x(2);
-% lambda1=x(3);
-% lambda2=x(4);
-% lambda3=x(5);
-% s1=x(6);
-% s2=x(7);
-% s3=x(8);
-% x=[x1 x2 lambda1 lambda2 lambda3 s1 s2 s3];
-
-wynik_x = x(1);
-wynik_y = x(2);
-res = sprintf('(x1,x2) = (%.1f, %.1f)',wynik_x, wynik_y);
-disp(res);
-set(handles.text10, 'String', res);
-
-%Show the results
-x1=handles.out.x1_from:0.01:handles.out.x1_to;
-x2=handles.out.x2_from:0.01:handles.out.x2_to;
-[X1_mesh, X2_mesh]=meshgrid(x1,x2);
-
-% Change number operator to matrix operator
-s_func = strrep(s_func, '^', '.^'); s_func = strrep(s_func, '*', '.*'); s_func = strrep(s_func, '/', './');
-s_ogr = strrep(s_ogr, '^', '.^'); s_ogr = strrep(s_ogr, '*', '.*'); s_ogr = strrep(s_ogr, '/', './');
-% Create inline functions
-in_func = inline(s_func,'x1','x2');
-in_ogr_1 = inline(char(s_ogr(1)),'x1','x2');
-in_ogr_2 = inline(char(s_ogr(2)),'x1','x2');
-in_ogr_3 = inline(char(s_ogr(3)),'x1','x2');
-%Compute values of functions
-s_func = in_func(X1_mesh,X2_mesh); 
-ogr1 = in_ogr_1(X1_mesh,X2_mesh) <= 0;
-ogr2 = in_ogr_2(X1_mesh,X2_mesh) <= 0;
-ogr3 = in_ogr_3(X1_mesh,X2_mesh) <= 0;
-
-axes(handles.axes1);
-cla; % Clear current axis
-colormap hot;
-hold on, grid on;
-title('Wykres 2D z ograniczeniami');
-axis auto;
-z4=contour(x1,x2,s_func);
-z1=contour(x1,x2,ogr1);
-z2=contour(x1,x2,ogr2);
-z3=contour(x1,x2,ogr3);
-
-plot(wynik_x,wynik_y,'--rs','LineWidth',5,'MarkerSize',10,'MarkerFaceColor', 'g');
-hold off;
-
-axes(handles.axes3); %plot ograniczenia
-cla; % Clear current axis
-grid on;
-axis auto;
-sum_ogr  = double(ogr1)+double(ogr2)+double(ogr3);
-mask = (sum_ogr == 3);
-sum_ogr = sum_ogr.*mask;
-contourf(x1,x2,double(sum_ogr)*(-1));
-title('Ograniczenia');
-
-axes(handles.axes2); % 3d
-cla; % Clear current axis
-mesh(X1_mesh,X2_mesh,s_func);
-title('Wykres 3D');
-colormap hot;
-colorbar;
-
-hold on; grid on;
-z1 = contour(x1,x2,ogr1);
-z2 = contour(x1,x2,ogr2);
-z3 = contour(x1,x2,ogr3);
-hold off;
-disp ('Done');
-% axes(handles.axes1);
-% cla; % Clear current axis
-% switch typ
-%     case 1  %step
-%         plot(0:1,0:1);
-%     case 2  %impulse
-%         plot(0:5,0:5);
-% end
-
-
-function wzor_Callback(hObject, eventdata, handles)
-% hObject    handle to wzor (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-wzor = get(hObject, 'String');
-% if isnan(wzor)
-%     set(hObject, 'String', 0);
-%     errordlg('Input must be a number','Error');
-% end
-
-handles.out.wzor = wzor;
-guidata(hObject, handles);
-
-% --- Executes during object creation, after setting all properties.
-function wzor_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to wzor (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function ograniczenie1_Callback(hObject, eventdata, handles)
-% hObject    handle to ograniczenie1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-ogr = get(hObject, 'String')
-if(isempty(ogr))
-    ogr = '0*x1';
-end
-handles.out.ogr1 = ogr;
-guidata(hObject, handles);
-
-% --- Executes during object creation, after setting all properties.
-function ograniczenie1_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ograniczenie1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-% --- Executes on selection change in popupmenu2.
-function popupmenu2_Callback(hObject, eventdata, handles)
-% hObject    handle to popupmenu2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns popupmenu2 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from popupmenu2
-popup_sel_index = get(hObject, 'Value');
-handles.out.typ = popup_sel_index;
-guidata(hObject, handles);
-
-% --- Executes during object creation, after setting all properties.
-function popupmenu2_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to popupmenu2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function ograniczenie2_Callback(hObject, eventdata, handles)
-% hObject    handle to ograniczenie2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of ograniczenie2 as text
-%        str2double(get(hObject,'String')) returns contents of ograniczenie2 as a double
-ogr = get(hObject, 'String');
-if(isempty(ogr))
-    ogr = '0*x1';
-end
-handles.out.ogr2 = ogr;
-guidata(hObject, handles);
-
-% --- Executes during object creation, after setting all properties.
-function ograniczenie2_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ograniczenie2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function ograniczenie3_Callback(hObject, eventdata, handles)
-% hObject    handle to ograniczenie3 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of ograniczenie3 as text
-%        str2double(get(hObject,'String')) returns contents of ograniczenie3 as a double
-ogr = get(hObject, 'String');
-if(isempty(ogr))
-    ogr = '0*x1';
-end
-handles.out.ogr3 = ogr;
-guidata(hObject, handles);
-
-% --- Executes during object creation, after setting all properties.
-function ograniczenie3_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ograniczenie3 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in domyslnyPrzyklad.
-function domyslnyPrzyklad_Callback(hObject, eventdata, handles)
-% hObject    handle to domyslnyPrzyklad (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-handles.out.ogr1 = '-x1';
-handles.out.ogr2 =  '-x2';
-handles.out.ogr3 = 'x1^2 + x2^2 - 1';
-handles.out.wzor = '(x1-2)^2+x2^2';
-
-handles.out.x1_from = -5;
-handles.out.x1_to = 5;
-handles.out.x2_from = -5;
-handles.out.x2_to = 5;
-
-set(handles.x1_from, 'String', handles.out.x1_from);
-set(handles.x1_to, 'String', handles.out.x1_to);
-set(handles.x2_from, 'String', handles.out.x2_from);
-set(handles.x2_to, 'String', handles.out.x2_to);
-
-guidata(hObject, handles);
-
-set(handles.wzor, 'String', handles.out.wzor);
-set(handles.ograniczenie1, 'String', handles.out.ogr1);
-set(handles.ograniczenie2, 'String', handles.out.ogr2);
-set(handles.ograniczenie3, 'String', handles.out.ogr3);
-
-set(handles.opisWyniku, 'String', sprintf('Rozwiazaniem teoretycznym jest (1,0).'));
-
-
-
-function x1_from_Callback(hObject, eventdata, handles)
-% hObject    handle to x1_from (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of x1_from as text
-%        str2double(get(hObject,'String')) returns contents of x1_from as a double
-data = str2double(get(hObject,'String'));
-if isnan(data)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+simTime = 3600*parameters('e_simtime');
+corridorLength = parameters('e_corridorLength');
+obstacles = parameters('e_obstacles');
+leak = parameters('e_leaks');
+step = parameters('e_step');
+if evalin('base', 'exist(''conf'', ''var'')') > 0 
+    conf = evalin('base', 'conf');
+    sim(robotData, simTime, corridorLength, obstacles, leak, step, conf, hObject);
 else
-    handles.out.x1_from = data;
-    guidata(hObject, handles);
+    msgbox('Brak wczytanego lub wygenerowanego pliku konfiguracji.','Symulacja');
 end
 
+disp('Done');
 
-
-% --- Executes during object creation, after setting all properties.
-function x1_from_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to x1_from (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function x1_to_Callback(hObject, eventdata, handles)
-% hObject    handle to x1_to (see GCBO)
+function e_name_Callback(hObject, eventdata, handles)
+% hObject    handle to e_name (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+value = get(hObject, 'String');
+handles.config('e_name') = value;
 
-% Hints: get(hObject,'String') returns contents of x1_to as text
-%        str2double(get(hObject,'String')) returns contents of x1_to as a double
-data = str2double(get(hObject,'String'));
-if isnan(data)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
-else
-    handles.out.x1_to = data;
-    guidata(hObject, handles);
-end
-
-% --- Executes during object creation, after setting all properties.
-function x1_to_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to x1_to (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function x2_from_Callback(hObject, eventdata, handles)
-% hObject    handle to x2_from (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of x2_from as text
-%        str2double(get(hObject,'String')) returns contents of x2_from as a double
-data = str2double(get(hObject,'String'));
-if isnan(data)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
-else
-    handles.out.x2_from = data;
-    guidata(hObject, handles);
-end
-
-% --- Executes during object creation, after setting all properties.
-function x2_from_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to x2_from (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function x2_to_Callback(hObject, eventdata, handles)
-% hObject    handle to x2_to (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of x2_to as text
-%        str2double(get(hObject,'String')) returns contents of x2_to as a double
-data = str2double(get(hObject,'String'));
-if isnan(data)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
-else
-    handles.out.x2_to = data;
-    guidata(hObject, handles);
-end
-
-% --- Executes during object creation, after setting all properties.
-function x2_to_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to x2_to (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in przykladV1.
-function przykladV1_Callback(hObject, eventdata, handles)
-% hObject    handle to przykladV1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-handles.out.ogr1 = 'x1 + x2 - 4';
-handles.out.ogr2 = '0*x1';
-handles.out.ogr3 = '0*x1';
-% Optymalne: (1,3);
-handles.out.wzor = '(x1-2)^2+(x2-4)^2';
-
-handles.out.x1_from = -5;
-handles.out.x1_to = 5;
-handles.out.x2_from = -5;
-handles.out.x2_to = 5;
+% Update handles structure
+handles = refreshGUI_basedOnConfig(hObject, handles.config);
 guidata(hObject, handles);
 
-set(handles.x1_from, 'String', handles.out.x1_from);
-set(handles.x1_to, 'String', handles.out.x1_to);
-set(handles.x2_from, 'String', handles.out.x2_from);
-set(handles.x2_to, 'String', handles.out.x2_to);
+% --- Executes during object creation, after setting all properties.
+function e_name_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_name (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
 
-set(handles.wzor, 'String', handles.out.wzor);
-set(handles.ograniczenie1, 'String', handles.out.ogr1);
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
 
-set(handles.ograniczenie2, 'String', '');
-set(handles.ograniczenie3, 'String', '');
-
-set(handles.opisWyniku, 'String', sprintf('Rozwiazaniem teoretycznym jest (1,3).'));
-
-
-
-% --- Executes on button press in przykladV2.
-function przykladV2_Callback(hObject, eventdata, handles)
-% hObject    handle to przykladV2 (see GCBO)
+function e_n_Callback(hObject, eventdata, handles)
+% hObject    handle to e_n (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.out.ogr1 = 'x1 + x2 - 8';
-handles.out.ogr2 = '-x1';
-handles.out.ogr3 = '-x2';
 
-handles.out.wzor = '-(x1-2)^2-(x2-4)^2';
-%Spelnia 7 punktow - optymalne (8,0)
-handles.out.x1_from = -9;
-handles.out.x1_to = 9;
-handles.out.x2_from = -9;
-handles.out.x2_to = 9;
+% Hints: get(hObject,'String') returns contents of e_n as text
+%        str2double(get(hObject,'String')) returns contents of e_n as a double
 
-set(handles.x1_from, 'String', handles.out.x1_from);
-set(handles.x1_to, 'String', handles.out.x1_to);
-set(handles.x2_from, 'String', handles.out.x2_from);
-set(handles.x2_to, 'String', handles.out.x2_to);
+handles = getAndUpdateNumberData(hObject, handles, 'e_n');
+% Update handles structure
 guidata(hObject, handles);
 
-set(handles.wzor, 'String', handles.out.wzor);
-set(handles.ograniczenie1, 'String', handles.out.ogr1);
-set(handles.ograniczenie2, 'String', handles.out.ogr2);
-set(handles.ograniczenie3, 'String', handles.out.ogr3);
-
-set(handles.opisWyniku, 'String', sprintf('Rozwiazaniem teoretycznym jest (8,0).\nAle warunki spelnia te¿: (3,5),(2,4),(0,4),(2,0),(0,0),(0,8),(8,0). '));
-
-
-% --- Executes on button press in przykladV3.
-function przykladV3_Callback(hObject, eventdata, handles)
-% hObject    handle to przykladV3 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-handles.out.ogr1 = 'x1+x2-6';
-handles.out.ogr2 = '6-2*x1-x2';
-handles.out.ogr3 = '-x2';
-handles.out.wzor = '10*(x1-3.5)^2+20*(x2-4)^2';
-handles.out.x1_from = -7;
-handles.out.x1_to = 7;
-handles.out.x2_from = -7;
-handles.out.x2_to = 7;
-% Optimum (2.5, 3.5);
-set(handles.x1_from, 'String', handles.out.x1_from);
-set(handles.x1_to, 'String', handles.out.x1_to);
-set(handles.x2_from, 'String', handles.out.x2_from);
-set(handles.x2_to, 'String', handles.out.x2_to);
-guidata(hObject, handles);
-
-set(handles.wzor, 'String', handles.out.wzor);
-set(handles.ograniczenie1, 'String', handles.out.ogr1);
-set(handles.ograniczenie2, 'String', handles.out.ogr2);
-set(handles.ograniczenie3, 'String', handles.out.ogr3);
-
-set(handles.opisWyniku, 'String', 'Rozwiazaniem teoretycznym jest (2.5,3.5).');
-
-
-
-function edit13_Callback(hObject, eventdata, handles)
-% hObject    handle to edit13 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edit13 as text
-%        str2double(get(hObject,'String')) returns contents of edit13 as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function edit13_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit13 (see GCBO)
+function e_n_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_n (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+% --- Executes on button press in pb_ZapiszKonfiguracje.
+function pb_ZapiszKonfiguracje_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_ZapiszKonfiguracje (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+%Stwórz konfiguracje na podstawie wpisanych parametrów:
+conf  = handles.config;
+
+
+%Generuj elementy:
+robotData.n = conf('e_n');
+robotData.r = conf('e_r');
+robotData.space = conf('e_space');
+robotData.vmax = conf('e_vmax');
+robotData.amax = conf('e_amax');
+
+simTime = 3600*conf('e_simtime');
+corridorLength = conf('e_corridorLength');
+obstaclesCount = conf('e_obstacles');
+leaksCount = conf('e_leaks');
+holesCount = 10;
+[robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount, holesCount);
+
+conf('robots') = robots;
+conf('obstacles') = obstacles;
+conf('leaks') = leaks;
+conf('holes') = holes;
+save(['Konfigruacja_', datestr(now,'ddmmyyyy_HHMMSS')], 'conf');
+rehash %update paths,
+
+% Update handles structure
+%handles = refreshGUI_basedOnConfig(hObject,handles.config);
+guidata(hObject, handles);
+
+% --- Executes on button press in pb_OtworzKonfiguracje.
+function pb_OtworzKonfiguracje_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_OtworzKonfiguracje (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+[fileName, pathName] = uigetfile({'*.mat'},'Wybierz plik z konfiguracj¹ wygenerowany w poprzednim punkcie.');
+if fileName ~= 0
+    command = sprintf('load(''%s'')', [pathName,fileName]);
+    evalin('base', command);
+    if evalin('base', 'exist(''conf'', ''var'')') > 0 
+        symParam = evalin('base', 'conf');
+        msg = ['Wczytano konfiguracje o nazwie: ', symParam('e_name')];
+        msgbox(msg, 'Symulacja');
+    else
+        msgbox('Bledny plik konfiguracji - prosze wczytac inny plik.','Symulacja');
+    end
+end
+
+% Update handles structure
+handles = refreshGUI_basedOnConfig(hObject, symParam);
+guidata(hObject, handles);
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over pb_ZapiszKonfiguracje.
+function pb_ZapiszKonfiguracje_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to pb_ZapiszKonfiguracje (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+
+function e_r_Callback(hObject, eventdata, handles)
+% hObject    handle to e_r (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_r as text
+%        str2double(get(hObject,'String')) returns contents of e_r as a double
+
+handles = getAndUpdateNumberData(hObject, handles, 'e_r');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_r_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_r (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pb_ZakonczSymulacje.
+function pb_ZakonczSymulacje_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_ZakonczSymulacje (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.stopCondition = true;
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+function e_step_Callback(hObject, eventdata, handles)
+% hObject    handle to e_step (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_step as text
+%        str2double(get(hObject,'String')) returns contents of e_step as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_step');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_step_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_step (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -602,18 +343,170 @@ end
 
 
 
-function edit14_Callback(hObject, eventdata, handles)
-% hObject    handle to edit14 (see GCBO)
+function e_space_Callback(hObject, eventdata, handles)
+% hObject    handle to e_space (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit14 as text
-%        str2double(get(hObject,'String')) returns contents of edit14 as a double
-
+% Hints: get(hObject,'String') returns contents of e_space as text
+%        str2double(get(hObject,'String')) returns contents of e_space as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_space');
+% Update handles structure
+guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
-function edit14_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit14 (see GCBO)
+function e_space_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_space (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_vmax_Callback(hObject, eventdata, handles)
+% hObject    handle to e_vmax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_vmax as text
+%        str2double(get(hObject,'String')) returns contents of e_vmax as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_vmax');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_vmax_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_vmax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_amax_Callback(hObject, eventdata, handles)
+% hObject    handle to e_amax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_amax as text
+%        str2double(get(hObject,'String')) returns contents of e_amax as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_amax');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_amax_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_amax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_simtime_Callback(hObject, eventdata, handles)
+% hObject    handle to e_simtime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_simtime as text
+%        str2double(get(hObject,'String')) returns contents of e_simtime as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_simtime');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_simtime_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_simtime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_corridorLength_Callback(hObject, eventdata, handles)
+% hObject    handle to e_corridorLength (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_corridorLength as text
+%        str2double(get(hObject,'String')) returns contents of e_corridorLength as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_corridorLength');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_corridorLength_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_corridorLength (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_obstacles_Callback(hObject, eventdata, handles)
+% hObject    handle to e_obstacles (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_obstacles as text
+%        str2double(get(hObject,'String')) returns contents of e_obstacles as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_obstacles');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_obstacles_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_obstacles (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function e_leaks_Callback(hObject, eventdata, handles)
+% hObject    handle to e_leaks (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of e_leaks as text
+%        str2double(get(hObject,'String')) returns contents of e_leaks as a double
+handles = getAndUpdateNumberData(hObject, handles, 'e_leaks');
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function e_leaks_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to e_leaks (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
