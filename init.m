@@ -41,7 +41,7 @@ function leaks = generateLeaks(simTime,leaksCount,corridorLength)
         instanceLeak.tau = rand * simTime;
         instanceLeak.theta = rand * simTime;
         instanceLeak.rho = rand;        
-        instanceLeak.n = round(rand * 2 + 1) + 3;
+        instanceLeak.n = round(rand * 2 + 1);
         
         leaks(i) = instanceLeak;
     end    

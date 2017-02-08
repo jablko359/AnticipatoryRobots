@@ -1,33 +1,28 @@
-function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, config, guiHandles)
-    %[robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount, 10);
-    robots = config('robots');
-    leaks = config('leaks');
-    obstacles = config('obstacles');
-    holes = config('holes');
-    
+function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
+    [robots, leaks, obstacles, holes] = init(robotData,simTime,corridorLength,obstaclesCount,leaksCount,10);
+
+    %  T = timer('TimerFcn', {@drawCallback, robots}, 'Period', 1);
+    %  start(T);
+
     iterationsCount = simTime / step;
     time = 0;
-    
     %main loop
     for j=1:iterationsCount
         time = time + step;
         activateObstacles();
         simulateRobots();
-        if mod(iterationsCount, 10) == 0 
-            h = guidata(guiHandles);  %Get the newest GUI 
-            updateVisualisation(h)
-            if (h.stopCondition == true)
-                 break;
-            end
-        end
+        pause(0.05);
+        clf
+        hold on;
+        plotObstacles();
+        plotRobots();
+        plotLeaks();
+        hold off;
     end    
         
-    function [damage,reset] = calculateRobotDamage(oldX,newX,direction)
+    function damage = calculateRobotDamage(oldX,newX,direction)
         damage = 0;      
-        reset = passedZeroPoint(oldX,newX,direction);
-        if reset
-            return;
-        end
+        
         for k=1:size(leaks,2)
             leak = leaks(k);
             if leak.repaired
@@ -37,11 +32,11 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
             intensity = leak.i;
             if direction == 1                
                 if (leakPosition < newX) && (leakPosition > oldX)
-                    damage = rand * intensity;                  
+                    damage = 0.1 * intensity;                  
                 end
             else
                 if (leakPosition < oldX) && (leakPosition > newX)
-                    damage = rand * intensity;                    
+                    damage = 0.1 * intensity;                    
                 end
             end
         end
@@ -49,18 +44,12 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
 
     function result = passedZeroPoint(oldX,newX,direction)
         halfDistance = corridorLength/2;
-        result = 0;
         if direction == 1
-            if oldX > halfDistance && newX < halfDistance
-                result = 1;
-            end
+            if halfDistance >
         else
-            if newX > halfDistance && oldX < halfDistance
-                result = 1;
-            end
         end
     end
-   
+      
     function activateObstacles()
         activeCount = 1;
         activeIndexes = [];
@@ -104,54 +93,10 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
         end
     end
 
-    function updateVisualisation(h)
-        pause(0.001);
-        
-        figure(h.figure1);
-        axes(h.axes1);
-        cla; % Clear current axis
-        hold on;
-        title(time + 's');
-        plotObstacles();
-        plotRobots();
-        %plotLeaks();
-        hold off;
-        
-        figure(h.figure1);
-        axes(h.axes2);
-        cla; % Clear current axis
-        title(time + 's');
-        hold on;
-        plotLeaks();
-        hold off;
-    end
 
-    function plotLineAsCircle(X, maxLen, dispFormat)
-        %convert to round:
-        radius=1;      %Radius of the circle
-        %Define circle in polar coordinates (angle and radius)
-        X = X./maxLen;
-        numPoints=max(size(X));
-        theta_current=ones(1, numPoints)*(2*pi).*X';
-        rho_current=ones(1, numPoints)*radius;
-        
-        %Plot base:
-        theta_all=linspace(0, 2*pi, 100);
-        rho_all=ones(1, 100)*radius;
-        [X,Y] = pol2cart(theta_all, rho_all); %Convert polar coordinates to Cartesian
-        plot(X,Y,'g--','linewidth',.1);
-        %Plot elements:
-        %hold on
-        [X, Y] = pol2cart(theta_current, rho_current); 
-        scatter(X, Y, dispFormat, 'LineWidth', 2);
-        axis off
-        axis square
-        axis([-1,1,-1,1]);        
-        %hold off
-    end
 
     function plotObstacles()
-        obstaclePosition = 0.9;
+        obstaclePosition = 1;
         X = zeros(size(obstacles,2),2);
         Y = zeros(size(obstacles,2),2);
         for k=1:size(obstacles,2)
@@ -161,26 +106,23 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
             Y(k,1) = obstaclePosition;
             Y(k,2) = obstaclePosition;
         end
-        %plot(X',Y');       
-        plotLineAsCircle(X(:,1), corridorLength,'gx');
-        plotLineAsCircle(X(:,2), corridorLength,'gx');
-        %axis([0,corridorLength,0,2]);
+        plot(X',Y');
+        axis([0,corridorLength,0,2]);
+        title(time + 's');
     end
 
     function plotRobots()
-        RobotPosition = 1.5;
         X = zeros(size(robots,2),1);
         Y = zeros(size(robots,2),1);
         for k=1:size(robots,2)
             rob = robots(k);
             X(k) = rob.x;
-            Y(k) = RobotPosition;
+            Y(k) = 1;
         end
-        plotLineAsCircle(X, corridorLength, 'ro');
+        scatter(X,Y);
     end
 
     function plotLeaks()
-        LeakPosition = 1;
         %Y = zeros(size(leaks,2),1);
         repairedX = [];
         activeX = [];
@@ -188,19 +130,17 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
             lk = leaks(k);
             if lk.repaired
                 repairedX(k) = lk.x;
-                repairedY(k) = LeakPosition;
+                repairedY(k) = 1;
             else
                 activeX(k) = lk.x;
-                Y(k) = LeakPosition;
+                Y(k) = 1;
             end            
         end
         if size(activeX) > 0
-            plotLineAsCircle(activeX', corridorLength, 'rd');
-            %scatter(activeX,Y,'d','fill');
+            scatter(activeX,Y,'d','fill');
         end
-        if size(repairedX) > 0
-            plotLineAsCircle(repairedX', corridorLength, 'bd');
-            %scatter(repairedX,repairedY,'d');
+         if size(repairedX) > 0
+            scatter(repairedX,repairedY,'d');
         end
         %dopisaæ rysowanie zagro¿eñ naprawionych
     end
@@ -235,10 +175,8 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
                 oldx = robot.x;
                 robot.x = calculateRobotPosition(robot);
                 foundLeaks = searchForLeaks(robot);
-                [robotDamage,reset] = calculateRobotDamage(oldx,robot.x,robot.d);
-                if reset
-                    robot.dm = 0;
-                elseif (robot.dm + robotDamage) > 1
+                robotDamage = calculateRobotDamage(oldx,robot.x,robot.d);
+                if (robot.dm + robotDamage) > 1
                     robot.dm = 1;
                 else
                     robot.dm = robot.dm + robotDamage;
@@ -283,10 +221,8 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
                     if distance > traveledDistance
                         robot.isDownturned = isDownturned;                        
                         robot.x = robPos;
-                        [robotDamage,reset] = calculateRobotDamage(robPos,robot.x,robot.d);
-                        if reset
-                            robot.dm = 0;
-                        elseif (robot.dm + robotDamage) > 1
+                        robotDamage = calculateRobotDamage(robPos,robot.x,robot.d);
+                        if (robot.dm + robotDamage) > 1
                             robot.dm = 1;
                         else
                             robot.dm = robot.dm + robotDamage;
@@ -312,7 +248,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
                         robots(robotInstance.n) = robotInstance;
                     end
                 else                                        
-                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.001 * fixingLeak.k * fixingLeak.i * step;        
+                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.001 * (1 - fixingLeak.i) * step;        
                     
                 end
                 if fixingLeak.repairStatus >= 1
@@ -320,13 +256,12 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step, co
                     fixingLeak.exists = 0;
                     robot.leak = -1;
                     robot.task = 'explore';
-                    robot.dm = robot.dm + 0.1 * fixingLeak.i / fixingLeak.k;
                     for i=size(robots,2)
                         robotInstance = robots(i);
                         if robotInstance.leak == leakIndex
                             robotInstance.leak = -1;
                             robotInstance.task = 'explore';
-                            robotInstance.dm = robotInstance.dm + 0.1 * fixingLeak.i / fixingLeak.k;
+                            robotInstance.dm = robotInstance.dm + 0.01 * i / fixingLeak.k;
                             robots(robotInstance.n) = robotInstance;
                         end
                     end
