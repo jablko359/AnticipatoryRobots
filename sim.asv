@@ -20,12 +20,9 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
         hold off;
     end    
         
-    function [damage,reset] = calculateRobotDamage(oldX,newX,direction)
+    function damage = calculateRobotDamage(oldX,newX,direction)
         damage = 0;      
-        reset = passedZeroPoint(oldX,newX,direction);
-        if reset
-            return;
-        end
+        
         for k=1:size(leaks,2)
             leak = leaks(k);
             if leak.repaired
@@ -35,11 +32,11 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
             intensity = leak.i;
             if direction == 1                
                 if (leakPosition < newX) && (leakPosition > oldX)
-                    damage = rand * intensity;                  
+                    damage = 0.1 * intensity;                  
                 end
             else
                 if (leakPosition < oldX) && (leakPosition > newX)
-                    damage = rand * intensity;                    
+                    damage = 0.1 * intensity;                    
                 end
             end
         end
@@ -47,15 +44,9 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
 
     function result = passedZeroPoint(oldX,newX,direction)
         halfDistance = corridorLength/2;
-        result = 0;
         if direction == 1
-            if oldX > halfDistance && newX < halfDistance
-                result = 1;
-            end
+            if halfDistance >
         else
-            if newX > halfDistance && oldX < halfDistance
-                result = 1;
-            end
         end
     end
       
@@ -184,10 +175,8 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                 oldx = robot.x;
                 robot.x = calculateRobotPosition(robot);
                 foundLeaks = searchForLeaks(robot);
-                [robotDamage,reset] = calculateRobotDamage(oldx,robot.x,robot.d);
-                if reset
-                    robot.dm = 0;
-                elseif (robot.dm + robotDamage) > 1
+                robotDamage = calculateRobotDamage(oldx,robot.x,robot.d);
+                if (robot.dm + robotDamage) > 1
                     robot.dm = 1;
                 else
                     robot.dm = robot.dm + robotDamage;
@@ -232,10 +221,8 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                     if distance > traveledDistance
                         robot.isDownturned = isDownturned;                        
                         robot.x = robPos;
-                        [robotDamage,reset] = calculateRobotDamage(robPos,robot.x,robot.d);
-                        if reset
-                            robot.dm = 0;
-                        elseif (robot.dm + robotDamage) > 1
+                        robotDamage = calculateRobotDamage(robPos,robot.x,robot.d);
+                        if (robot.dm + robotDamage) > 1
                             robot.dm = 1;
                         else
                             robot.dm = robot.dm + robotDamage;
@@ -261,7 +248,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                         robots(robotInstance.n) = robotInstance;
                     end
                 else                                        
-                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.001 * fixingLeak.k * fixingLeak.i * step;        
+                    fixingLeak.repairStatus = fixingLeak.repairStatus + 0.001 * (1 - fixingLeak.i) * step;        
                     
                 end
                 if fixingLeak.repairStatus >= 1
@@ -269,13 +256,12 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
                     fixingLeak.exists = 0;
                     robot.leak = -1;
                     robot.task = 'explore';
-                    robot.dm = robot.dm + 0.1 * fixingLeak.i / fixingLeak.k;
                     for i=size(robots,2)
                         robotInstance = robots(i);
                         if robotInstance.leak == leakIndex
                             robotInstance.leak = -1;
                             robotInstance.task = 'explore';
-                            robotInstance.dm = robotInstance.dm + 0.1 * fixingLeak.i / fixingLeak.k;
+                            robotInstance.dm = robotInstance.dm + 0.01 * i / fixingLeak.k;
                             robots(robotInstance.n) = robotInstance;
                         end
                     end
@@ -370,7 +356,7 @@ function sim(robotData,simTime,corridorLength,obstaclesCount,leaksCount,step)
         end
                 
         %Spowolnienie robota przez uszkodzenia
-        damage = robot.dm
+        damage = robot.dm;
         if damage > 0
             v = v * (1 - damage);
         elseif damage >= 1

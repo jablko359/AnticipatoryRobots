@@ -7,6 +7,6 @@ simTime = 3600*8;
 corridorLength = 5000;
 obstacles = 12;
 
-leak = 30;
+leak = 10;
 
 sim(robotData,simTime,corridorLength,obstacles,leak,10);
