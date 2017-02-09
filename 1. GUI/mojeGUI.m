@@ -2,32 +2,6 @@ function varargout = mojeGUI(varargin)
 %MOJEGUI MATLAB 2013a code for mojeGUI.fig
 %   Graficzny panel u¿ytkownika dla wizualizacji problemu warunkuów KKT.
 %   Cechy i elementy:
-%       1) Algorytm szuka minimum z danej funkcji przy okreslonych
-%           ograniczeniach oraz badanym zakresie,
-%       2) W polu „Wzór” mozna wpisac dowolny wzór przyjmujac oznaczenia na zmienne x1,x2
-%           (x3 dla wersji trójwymiarowej),
-%       3) Ograniczenia musza byc podawane w postaci znormalizowanej czyli
-%           g(x)<=0,
-%       4) Krok z jakim jest zrobiona kwantyzacja zmiennych to 0.01 jednostki
-%       5) Mozliwy jest do wyboru punkt startowy (tylko w wersji 2 wymiarowej) z którego
-%           rozpoczynane sa poszukiwania,
-%       3) W programie sa zapisane przyk³ady dla których rozwiazania zosta³y obliczone analitycznie.
-%            Mozna je wybrac w obszarze „Przyk³ady do wyboru” (zosta³y one dok³adniej
-%            opisane w niniejszym opracowaniu). Opis i rozwiazanie dok³adne pojawia sie w obszarze
-%            „Wynik teoretyczny”.
-%       7) Rezultat poszukiwania jest zaprezentowany w dualny sposób
-%           – Po pierwsze na wykresie dwu-wymiarowym zielonym punktem z czerwona obwódka,
-%           – Po drugie w obszarze „Wynik obliczony” gdzie podany jest dok³adny wynik,
-%       8) Wykresy prezentuja 3 rzeczy:
-%           – Problem w przestrzeni dwuwymiarowej, gdzie wartosc funkcji jest tylko oznaczona
-%          kolorami poziomic,
-%           – Czesc wspólna wybranych ograniczen (zaznaczona na czarno),
-%           – Problem w przestrzeni 3D, gdzie wartosc funkcji jest oprócz koloru poziomic wizualizowana
-%          w postaci wartosci na osi 0Z,
-%       9) W przypadku wersji dla problemów z trzema zmiennymi(3D) wizualizacja jest wykonywana
-%           dla dwóch z trzech z osi. Trzecia zmienna jest ustawiona na sta³e na wartosc
-%           znalezionego minimum. W ten sposób tworzone s¹ rzuty przekrojów na kolejne p³aszczyzny.
-%          Trzecia os stanowi wartosc funkcji.
 %
 %       Plik graficzny z opisem przycisków i dzia³ania: "2d_OpisGUI.jpg".
 %
@@ -95,7 +69,6 @@ handles.config('e_space') = 10;
 handles.config('e_vmax') = 1;
 handles.config('e_amax') = 1;
 handles.config('e_simtime') = 8;
-
 
 handles.config('e_corridorLength') = 5000;
 handles.config('e_obstacles') = 12;
